@@ -1,0 +1,15 @@
+{% extends "layout3.html" %}
+
+{% block body %}
+    <div class = "jumbotron text-center">
+        <h3>Yazılım Birimi Bloğuna Hoşgeldiniz </h3>
+        <p>Bu blogla ilgili açıklamalar vs............ </p>
+    </div>
+
+<ul>
+    {% for number in numbers %}
+        <li>{{number}} </li>
+    {% endfor %}
+</ul>
+
+{% endblock body %}
