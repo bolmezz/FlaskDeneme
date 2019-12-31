@@ -40,6 +40,17 @@ def index():
 def about():
     return render_template("about.html")
 
+# Kayıt Olma
+@app.route("/register", methods = ["GET","POST"]) #hem get hem de post req alabilir
+def register():
+    form = RegisterForm(request.form)
+
+    if request.method == "POST": # submit butonuna basıldığında post req oluşur
+        return redirect(url_for("index")) #index metoduyla ilişkili olan url adresine gider
+    else:
+        return render_template("register.html", form = form)
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)  # localhost'u çalıştır
