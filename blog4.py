@@ -23,7 +23,7 @@ app = Flask(__name__)  # flask'tan bir obje oluşturduk
 app.config["MYSQL_HOST"] = "localhost"
 app.config["MYSQL_USER"] = "root"
 app.config["MYSQL_PASSWORD"] = ""
-app.config["MYQGL_DB"] = "ybblog"
+app.config["MYSQL_DB"] = "ybblog"
 app.config["MYSQL_CURSORCLASS"] = "DictCursor"
 
 # app ile mysql'i bağlamak istediğimiz için parametre olarak verdik. Flask ile MySql bağlantısını sağladık.
@@ -45,7 +45,25 @@ def about():
 def register():
     form = RegisterForm(request.form)
 
-    if request.method == "POST": # submit butonuna basıldığında post req oluşur
+    if request.method == "POST" and form.validate(): # submit butonuna basıldığında post req oluşur
+        name = form.name.data
+        username = form.username.data
+        email = form.email.data
+        password = sha256_crypt.encrypt(form.password.data) 
+        # şifreleri encrypt ederek saklamak istiyoruz
+
+        cursor = mysql.connection.cursor()
+         # mySQL vt üzerinde işlem yapabilmemizi sağlayacak yapı: cursor
+
+        sorgu = "Insert into users(name,email,username,password) VALUES(%s,%s,%s,%s)"
+        cursor.execute(sorgu,(name,email,username,password)) 
+        # değerleri demet olarak veriyoruz
+        # sorgu = "Insert into users(name,email,username,password) VALUES({},{},{},{})".format(name,email,username,password)
+
+        mysql.connection.commit() # vt'da güncelleme yaptığımız için commit yapmalıyız.
+
+        cursor.close()
+
         return redirect(url_for("index")) #index metoduyla ilişkili olan url adresine gider
     else:
         return render_template("register.html", form = form)
