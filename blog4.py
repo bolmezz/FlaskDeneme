@@ -17,14 +17,19 @@ class RegisterForm(Form):
         message="Lütfen bir parola belirleyin."), validators.EqualTo(fieldname="confirm", message="Parola uyuşmuyor.")])
     confirm = PasswordField("Parolayı Tekrar Girin")
 
+class LoginForm(Form):
+    username = StringField("Kullanıcı Adı: ")
+    password = PasswordField("Parola: ")
 
 app = Flask(__name__)  # flask'tan bir obje oluşturduk
+
+app.secret_key = "ybblog" # kendimiz uydurabiliriz
 
 app.config["MYSQL_HOST"] = "localhost"
 app.config["MYSQL_USER"] = "root"
 app.config["MYSQL_PASSWORD"] = ""
 app.config["MYSQL_DB"] = "ybblog"
-app.config["MYSQL_CURSORCLASS"] = "DictCursor"
+app.config["MYSQL_CURSORCLASS"] = "DictCursor" # aldığımız veriler sözlük yapısında gelir
 
 # app ile mysql'i bağlamak istediğimiz için parametre olarak verdik. Flask ile MySql bağlantısını sağladık.
 mysql = MySQL(app)
@@ -63,11 +68,40 @@ def register():
         mysql.connection.commit() # vt'da güncelleme yaptığımız için commit yapmalıyız.
 
         cursor.close()
+        flash("Başarıyla kayıt oldunuz..","success")
 
-        return redirect(url_for("index")) #index metoduyla ilişkili olan url adresine gider
+        return redirect(url_for("login")) #index metoduyla ilişkili olan url adresine gider
     else:
         return render_template("register.html", form = form)
 
+# Login İşlemi
+@app.route("/login", methods = ["GET","POST"])
+def login():
+    form = LoginForm(request.form) # http request
+
+    if request.method == "POST" and form.validate():
+        username = form.username.data
+        password_entered = form.password.data
+
+        cursor = mysql.connection.cursor()
+        sorgu = "Select * From users where username = %s"
+
+        result = cursor.execute(sorgu, (username, )) # (username, ) -> tek elemanlı demet syntax'i
+
+        if result > 0:
+            data = cursor.fetchone()
+            real_password =data["password"] # tablodaki password alanını alıyoruz
+            if sha256_crypt.verify(password_entered,real_password):
+                flash("Başarıyla giriş yapıldı.","success")
+                return redirect(url_for("index"))
+            else:
+                flash("Parola yanlış!","warning")
+                return redirect(url_for("login"))
+        else:
+            flash("Böyle bir kullanıcı bulunamadı!","danger")
+            return redirect(url_for("login"))
+
+    return render_template("login.html", form = form)
 
 
 if __name__ == "__main__":
