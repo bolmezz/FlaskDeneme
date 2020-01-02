@@ -95,7 +95,7 @@ def login():
                 # session
                 session["logged_in"] = True
                 session["username"] = username
-                
+                 
                 flash("Başarıyla giriş yapıldı.","success")
                 return redirect(url_for("index"))
             else:
@@ -112,6 +112,20 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("index"))
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
