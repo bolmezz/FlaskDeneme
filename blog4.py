@@ -92,6 +92,10 @@ def login():
             data = cursor.fetchone()
             real_password =data["password"] # tablodaki password alanını alıyoruz
             if sha256_crypt.verify(password_entered,real_password):
+                # session
+                session["logged_in"] = True
+                session["username"] = username
+                
                 flash("Başarıyla giriş yapıldı.","success")
                 return redirect(url_for("index"))
             else:
@@ -102,6 +106,12 @@ def login():
             return redirect(url_for("login"))
 
     return render_template("login.html", form = form)
+
+# Logout işlemi
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
