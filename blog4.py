@@ -2,10 +2,20 @@ from flask import Flask, render_template, flash, redirect, url_for, session, log
 from flask_mysqldb import MySQL
 from wtforms import Form, StringField, TextAreaField, PasswordField, validators
 from passlib.hash import sha256_crypt
+from functools import wraps # decorator'lar için
+
+# Kullanıcı Giriş Decorator'ı
+def login_required(f):
+    @wraps(f) # tüm decorator'larda aynı
+    def decorated_function(*args, **kwargs): # tüm decorator'larda aynı
+        if "logged_in" in session: # session'ın içinde "logged_in" diye bir key value var mı?
+            return f(*args, **kwargs) # tüm decorator'larda aynı // session başlamışsa normal bir şekilde çalıştırır
+        else:
+            flash("Bu sayfayı görüntülemek için lütfen giriş yapın.","warning")
+            return redirect(url_for("login")) # giriş yapmamışsa eğer, login ekranına yönlendiriyoruz 
+    return decorated_function # tüm decorator'larda aynı
 
 # Kullanıcı Kayıt Formu
-
-
 class RegisterForm(Form):
     name = StringField("İsim Soyisim", validators=[validators.Length(
         min=4, max=25)])  # StringField class'ından türettik
@@ -17,9 +27,20 @@ class RegisterForm(Form):
         message="Lütfen bir parola belirleyin."), validators.EqualTo(fieldname="confirm", message="Parola uyuşmuyor.")])
     confirm = PasswordField("Parolayı Tekrar Girin")
 
+# Kullanıcı Login Formu
 class LoginForm(Form):
     username = StringField("Kullanıcı Adı: ")
     password = PasswordField("Parola: ")
+
+# Makale Formu
+class ArticleForm(Form):
+    title = StringField("Makale Başlığı", validators=[
+        validators.Length(min = 5, max = 100)])
+    content = TextAreaField("Makale İçeriği", validators=[
+        validators.Length(min = 10)])
+    
+
+
 
 app = Flask(__name__)  # flask'tan bir obje oluşturduk
 
@@ -113,19 +134,17 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
+# Kontrol Paneli
 @app.route("/dashboard")
+@login_required # dashboard çalıştırılmadan önce login_required'a gidecek
 def dashboard():
     return render_template("dashboard.html")
 
-
-
-
-
-
-
-
-
-
+# Makale Ekleme
+@app.route("/addarticle", methods = ["POST", "GET"])
+def addarticle():
+    form = ArticleForm(request.form)
+    return render_template("addarticle.html", form = form)
 
 
 if __name__ == "__main__":
