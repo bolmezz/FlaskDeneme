@@ -138,14 +138,150 @@ def logout():
 @app.route("/dashboard")
 @login_required # dashboard çalıştırılmadan önce login_required'a gidecek
 def dashboard():
-    return render_template("dashboard.html")
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * from articles where author = %s"
+
+    result = cursor.execute(sorgu, (session["username"],))
+
+    if result > 0:
+        articles = cursor.fetchall()
+        return render_template("dashboard.html", articles = articles)
+    else:
+        return render_template("dashboard.html")
 
 # Makale Ekleme
 @app.route("/addarticle", methods = ["POST", "GET"])
 def addarticle():
     form = ArticleForm(request.form)
+
+    if request.method == "POST" and form.validate(): # makaleyi kaydedicez
+        title = form.title.data
+        content = form.content.data
+
+        cursor = mysql.connection.cursor()
+        sorgu = "Insert into articles(title,author,content) VALUES(%s,%s,%s)"
+
+        cursor.execute(sorgu, (title,session["username"],content))
+        mysql.connection.commit()
+
+        cursor.close()
+
+        flash("Makale başarıyla eklenmiştir.","success")
+
+        return redirect(url_for("dashboard"))
+
     return render_template("addarticle.html", form = form)
 
+# Makale Sayfası
+@app.route("/articles")
+def articles():
+    cursor = mysql.connection.cursor()
 
+    sorgu = "Select * from articles"
+    result = cursor.execute(sorgu)
+
+    if result > 0:
+        articles = cursor.fetchall() # vt'deki tüm makaleleri liste içinde sözlük olarak dönecek
+        return render_template("articles.html", articles = articles)
+    else:
+        return render_template("articles.html")
+
+    cursor.close()
+
+# Detay Sayfası
+@app.route("/article/<string:id>") # dinamik url (id string olarak gelecek demek)
+def article(id):
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * from articles where id = %s"
+
+    result = cursor.execute(sorgu,(id, ))
+
+    if result > 0:
+        article = cursor.fetchone()
+        return render_template("article.html", article = article)
+    else:
+        return render_template("article.html")
+
+# Makale Silme
+@app.route("/delete/<string:id>")
+@login_required
+def delete(id):
+    cursor = mysql.connection.cursor()
+
+    sorgu = "Select * from articles where author = %s and id = %s"
+
+    result = cursor.execute(sorgu, (session["username"],id))
+
+    if result > 0:
+        sorgu2 = "Delete from articles where id = %s"
+
+        cursor.execute(sorgu2, (id,))
+        mysql.connection.commit()
+        flash("Makale silindi.","success")
+        return redirect(url_for("dashboard"))  
+    else:
+        flash("Böyle bir makale yok veya bu işleme yetkiniz yok.", "danger")
+        return redirect(url_for("index"))
+
+# Makale Güncelleme
+@app.route("/edit/<string:id>", methods = ["POST", "GET"])
+@login_required
+def update(id):
+    if request.method == "GET":
+        cursor = mysql.connection.cursor()
+
+        sorgu = "Select * from articles where author = %s and id = %s"
+
+        result = cursor.execute(sorgu, (session["username"], id))
+
+        if result == 0:
+            flash("Böyle bir makale yok veya bu işleme yetkiniz yok.", "danger")
+            return redirect(url_for("index"))
+        else:
+            article = cursor.fetchone()
+            form = ArticleForm()
+
+            form.title.data = article["title"]
+            form.content.data = article["content"]
+            return render_template("update.html", form = form)
+    else: # POST request
+        form = ArticleForm(request.form)
+
+        newTitle = form.title.data
+        newContent = form.content.data
+       
+        sorgu2 = "Update articles Set title = %s, content = %s where id = %s"
+
+        cursor = mysql.connection.cursor()
+        cursor.execute(sorgu2, (newTitle, newContent, id))
+        mysql.connection.commit()
+        cursor.close()
+
+        flash("Makale güncellendi!", "success")
+        return redirect(url_for("dashboard"))
+
+# Arama URL
+@app.route("/search", methods = ["POST", "GET"])  # GET req'te görülmemeli    
+def search():
+    if request.method == "GET":
+        return redirect(url_for("index"))
+    else: # Arama işlemi yapılacak
+        keyword = request.form.get("keyword") # POST old. için request'i kullanıyoruz
+
+        cursor = mysql.connection.cursor()
+
+        sorgu = "Select * from articles where title like '%"+ keyword+"%' " # title'ın içinde 'keyword' geçenleri getir
+        
+        result = cursor.execute(sorgu)
+
+        if result == 0:
+            flash("Böyle bir makale bulunamadı.","warning")
+            return redirect(url_for("articles"))    
+        else:
+            articles = cursor.fetchall()
+            return render_template("articles.html", articles = articles)
+            
 if __name__ == "__main__":
     app.run(debug=True)  # localhost'u çalıştır
